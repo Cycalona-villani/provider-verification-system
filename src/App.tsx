@@ -1,9 +1,22 @@
 import { useState } from 'react'
 import './App.css'
 
-type CheckResult = {
+type Checks = {
   identity: 'match' | 'mismatch'
   license: 'active' | 'expired'
+}
+
+type Review = {
+  decision: 'confirmed' | 'rejected'
+  reason: string
+}
+
+type AuditEvent = {
+  providerId: number
+  time: string
+  actor: string
+  action: string
+  reason: string
 }
 
 const providers = [
@@ -25,64 +38,119 @@ const providers = [
 
 function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [results, setResults] = useState<Record<number, CheckResult>>({})
-  const [checkingId, setCheckingId] = useState<number | null>(null)
+  const [checks, setChecks] = useState<Record<number, Checks>>({})
+  const [reviews, setReviews] = useState<Record<number, Review>>({})
   const [approvedIds, setApprovedIds] = useState<number[]>([])
-  const [message, setMessage] = useState('')
+  const [checkingId, setCheckingId] = useState<number | null>(null)
+  const [reason, setReason] = useState('')
+  const [history, setHistory] = useState<AuditEvent[]>([])
 
-  const selected = providers.find(provider => provider.id === selectedId)
+  const selected = providers.find(p => p.id === selectedId)
 
-  function checksPassed(id: number) {
+  function record(id: number, actor: string, action: string, why: string) {
+    setHistory(previous => [
+      ...previous,
+      {
+        providerId: id,
+        time: new Date().toISOString(),
+        actor,
+        action,
+        reason: why,
+      },
+    ])
+  }
+
+  function eligible(id: number) {
+    const identityConfirmed =
+      checks[id]?.identity === 'match' ||
+      reviews[id]?.decision === 'confirmed'
+
     return (
-      results[id]?.identity === 'match' &&
-      results[id]?.license === 'active'
+      checks[id]?.license === 'active' &&
+      identityConfirmed &&
+      reviews[id]?.decision !== 'rejected'
     )
   }
 
-  function getStatus(id: number) {
+  function status(id: number) {
     if (checkingId === id) return 'Checking…'
     if (approvedIds.includes(id)) return 'Approved'
-    if (!results[id]) return 'Pending verification'
-    if (!checksPassed(id)) return 'Needs manual review'
-    return 'Checks passed — awaiting approval'
+    if (reviews[id]?.decision === 'rejected') return 'Rejected'
+    if (!checks[id]) return 'Pending verification'
+    if (!eligible(id)) return 'Needs manual review'
+    return 'Eligible — awaiting approval'
   }
 
   async function runChecks(id: number) {
-    if (checkingId !== null || approvedIds.includes(id)) return
+    if (checkingId !== null || checks[id]) return
 
-    setMessage('')
     setCheckingId(id)
+    record(id, 'Demo service', 'Checks started', 'Initial verification')
+
     await new Promise(resolve => setTimeout(resolve, 1000))
 
-    const result: CheckResult = {
+    const result: Checks = {
       identity: id === 1 ? 'match' : 'mismatch',
       license: 'active',
     }
 
-    setResults(previous => ({ ...previous, [id]: result }))
+    setChecks(previous => ({ ...previous, [id]: result }))
+    record(
+      id,
+      'Demo service',
+      'Checks completed',
+      `Identity: ${result.identity}; license: ${result.license}`,
+    )
     setCheckingId(null)
   }
 
-  function approveProvider(id: number) {
-    // Guard the action as well as disabling the button.
+  function reviewIdentity(id: number, decision: Review['decision']) {
+    const explanation = reason.trim()
+
+    if (
+      !explanation ||
+      checkingId !== null ||
+      checks[id]?.identity !== 'mismatch' ||
+      reviews[id] ||
+      approvedIds.includes(id)
+    ) return
+
+    setReviews(previous => ({
+      ...previous,
+      [id]: { decision, reason: explanation },
+    }))
+    record(
+      id,
+      'Demo reviewer',
+      decision === 'confirmed' ? 'Identity confirmed' : 'Application rejected',
+      explanation,
+    )
+    setReason('')
+  }
+
+  function approve(id: number) {
     if (
       checkingId !== null ||
-      !checksPassed(id) ||
+      !eligible(id) ||
       approvedIds.includes(id)
-    ) {
-      return
-    }
+    ) return
 
     setApprovedIds(previous => [...previous, id])
-    setMessage('Demo approval recorded. Provider may accept patients.')
+    record(
+      id,
+      'Demo reviewer',
+      'Provider approved',
+      'Required checks satisfied; patient access enabled',
+    )
   }
 
   return (
     <main>
       <h1>Provider Verification System</h1>
       <p>
-        <strong>Trust & Safety demo:</strong> Fictional data and
-        simulated checks. Approval controls run only in this browser.
+        <strong>Trust & Safety demo:</strong> Fictional data, simulated
+        checks, and a simulated reviewer. No real authorization service
+        is connected.
       </p>
 
       <h2>Applications</h2>
@@ -100,11 +168,11 @@ function App() {
             <tr key={provider.id}>
               <td>{provider.name}</td>
               <td>{provider.specialty}</td>
-              <td>{getStatus(provider.id)}</td>
+              <td>{status(provider.id)}</td>
               <td>
                 <button onClick={() => {
                   setSelectedId(provider.id)
-                  setMessage('')
+                  setReason('')
                 }}>
                   View details
                 </button>
@@ -117,65 +185,115 @@ function App() {
       {selected && (
         <section aria-labelledby="details-heading">
           <h2 id="details-heading">{selected.name}</h2>
-          <dl>
-            <dt>Specialty</dt>
-            <dd>{selected.specialty}</dd>
-            <dt>Practice state</dt>
-            <dd>{selected.state}</dd>
-            <dt>License number</dt>
-            <dd>{selected.license}</dd>
-          </dl>
+          <p>Specialty: {selected.specialty}</p>
+          <p>Practice state: {selected.state}</p>
+          <p>License number: {selected.license}</p>
 
           <div role="status">
-            <p>Status: {getStatus(selected.id)}</p>
+            <p>Status: {status(selected.id)}</p>
             <p>
-              Identity: {results[selected.id]?.identity ?? 'Not checked'}
+              Identity check: {checks[selected.id]?.identity ?? 'Not checked'}
             </p>
             <p>
-              License: {results[selected.id]?.license ?? 'Not checked'}
+              License check: {checks[selected.id]?.license ?? 'Not checked'}
             </p>
             <p>
               Accepting patients:{' '}
               {approvedIds.includes(selected.id) ? 'Allowed' : 'Blocked'}
             </p>
-            {message && <p>{message}</p>}
           </div>
 
-          {results[selected.id] && !checksPassed(selected.id) && (
-            <p>
-              Approval blocked: a required check did not pass.
-              An authorized reviewer must investigate.
-            </p>
-          )}
-
           <button
-            disabled={
-              checkingId !== null ||
-              approvedIds.includes(selected.id)
-            }
+            disabled={checkingId !== null || !!checks[selected.id]}
             onClick={() => runChecks(selected.id)}
           >
             Run demo checks
           </button>
-          {' '}
-          <button
-            disabled={
-              checkingId !== null ||
-              !checksPassed(selected.id) ||
-              approvedIds.includes(selected.id)
-            }
-            onClick={() => approveProvider(selected.id)}
-          >
-            Approve provider
-          </button>
-          {' '}
-          <button onClick={() => setSelectedId(null)}>
-            Close details
-          </button>
+
+          {checks[selected.id]?.identity === 'mismatch' &&
+            !reviews[selected.id] && (
+              <section aria-labelledby="review-heading">
+                <h3 id="review-heading">Manual identity review</h3>
+                <p>
+                  Demo scenario: investigate whether the name mismatch
+                  is explained by supporting evidence.
+                </p>
+                <label htmlFor="review-reason">
+                  Evidence reviewed and reason for decision (required)
+                </label>
+                <br />
+                <textarea
+                  id="review-reason"
+                  rows={4}
+                  value={reason}
+                  onChange={event => setReason(event.target.value)}
+                />
+                <br />
+                <button
+                  disabled={!reason.trim() || checkingId !== null}
+                  onClick={() => reviewIdentity(selected.id, 'confirmed')}
+                >
+                  Confirm identity
+                </button>
+                {' '}
+                <button
+                  disabled={!reason.trim() || checkingId !== null}
+                  onClick={() => reviewIdentity(selected.id, 'rejected')}
+                >
+                  Reject application
+                </button>
+              </section>
+            )}
+
+          {reviews[selected.id] && (
+            <p>
+              Review: {reviews[selected.id].decision}. Reason:{' '}
+              {reviews[selected.id].reason}
+            </p>
+          )}
+
+          <p>
+            <button
+              disabled={
+                checkingId !== null ||
+                !eligible(selected.id) ||
+                approvedIds.includes(selected.id)
+              }
+              onClick={() => approve(selected.id)}
+            >
+              Approve provider
+            </button>
+            {' '}
+            <button onClick={() => setSelectedId(null)}>
+              Close details
+            </button>
+          </p>
+
+          <h3>Decision history</h3>
+          {history.some(event => event.providerId === selected.id) ? (
+            <ol>
+              {history
+                .filter(event => event.providerId === selected.id)
+                .map((event, index) => (
+                  <li key={index}>
+                    <strong>{event.action}</strong>
+                    <br />
+                    {event.actor} · {new Date(event.time).toLocaleString()}
+                    <br />
+                    {event.reason}
+                  </li>
+                ))}
+            </ol>
+          ) : (
+            <p>No events recorded.</p>
+          )}
         </section>
       )}
 
-      <p>Demo results and approvals reset when you refresh.</p>
+      <p>
+        All demo data resets on refresh. Production approval and audit
+        records must be enforced and stored by a backend.
+      </p>
     </main>
   )
 }
