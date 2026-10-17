@@ -44,21 +44,72 @@ function App() {
   const [checkingId, setCheckingId] = useState<number | null>(null)
   const [reason, setReason] = useState('')
   const [history, setHistory] = useState<AuditEvent[]>([])
+  const [simulateOutage, setSimulateOutage] = useState(false)
+  const [errors, setErrors] = useState<Record<number, string>>({})
 
   const selected = providers.find(p => p.id === selectedId)
 
-  function record(id: number, actor: string, action: string, why: string) {
-    setHistory(previous => [
-      ...previous,
-      {
-        providerId: id,
-        time: new Date().toISOString(),
-        actor,
-        action,
-        reason: why,
-      },
-    ])
+  function record(
+  providerId: number,
+  actor: string,
+  action: string,
+  reason: string
+) {
+  const event: AuditEvent = {
+    providerId,
+    time: new Date().toISOString(),
+    actor,
+    action,
+    reason,
   }
+
+  setHistory(previous => [...previous, event])
+}
+
+  async function runChecks(id: number) {
+  if (checkingId !== null || checks[id]) return
+
+  const shouldFail = simulateOutage
+
+  setCheckingId(id)
+  setErrors(previous => ({ ...previous, [id]: '' }))
+  record(id, 'Demo service', 'Checks started', 'Verification requested')
+
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    if (shouldFail) {
+      throw new Error('Verification service unavailable. Please retry.')
+    }
+
+    const result: Checks = {
+      identity: id === 1 ? 'match' : 'mismatch',
+      license: 'active',
+    }
+
+    setChecks(previous => ({ ...previous, [id]: result }))
+    record(
+      id,
+      'Demo service',
+      'Checks completed',
+      `Identity: ${result.identity}; license: ${result.license}`,
+    )
+  } catch {
+    setErrors(previous => ({
+      ...previous,
+      [id]: 'Verification service unavailable. Please retry.',
+    }))
+
+    record(
+      id,
+      'Demo service',
+      'Verification unavailable',
+      'No verification result received; approval remains blocked',
+    )
+  } finally {
+    setCheckingId(null)
+  }
+}
 
   function eligible(id: number) {
     const identityConfirmed =
@@ -81,28 +132,6 @@ function App() {
     return 'Eligible — awaiting approval'
   }
 
-  async function runChecks(id: number) {
-    if (checkingId !== null || checks[id]) return
-
-    setCheckingId(id)
-    record(id, 'Demo service', 'Checks started', 'Initial verification')
-
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    const result: Checks = {
-      identity: id === 1 ? 'match' : 'mismatch',
-      license: 'active',
-    }
-
-    setChecks(previous => ({ ...previous, [id]: result }))
-    record(
-      id,
-      'Demo service',
-      'Checks completed',
-      `Identity: ${result.identity}; license: ${result.license}`,
-    )
-    setCheckingId(null)
-  }
 
   function reviewIdentity(id: number, decision: Review['decision']) {
     const explanation = reason.trim()
@@ -152,7 +181,15 @@ function App() {
         checks, and a simulated reviewer. No real authorization service
         is connected.
       </p>
-
+    <label>
+  <input
+    type="checkbox"
+    checked={simulateOutage}
+    disabled={checkingId !== null}
+    onChange={event => setSimulateOutage(event.target.checked)}
+  />
+  {' '}Simulate verification service outage
+    </label>
       <h2>Applications</h2>
       <table>
         <thead>
@@ -202,6 +239,10 @@ function App() {
               {approvedIds.includes(selected.id) ? 'Allowed' : 'Blocked'}
             </p>
           </div>
+
+          {errors[selected.id] && (
+  <p role="alert">{errors[selected.id]}</p>
+)}
 
           <button
             disabled={checkingId !== null || !!checks[selected.id]}
