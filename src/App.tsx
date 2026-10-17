@@ -34,6 +34,13 @@ const providers = [
     state: 'Indiana',
     license: 'DEMO-1002',
   },
+    {
+    id: 3,
+    name: 'Dr. Morgan Davis',
+    specialty: 'Internal Medicine',
+    state: 'Oklahoma',
+    license: 'DEMO-1003',
+  },
 ]
 
 function App() {
@@ -84,8 +91,8 @@ function App() {
 
     const result: Checks = {
       identity: id === 1 ? 'match' : 'mismatch',
-      license: 'active',
-    }
+      license: id === 3 ? 'expired' : 'active',
+}
 
     setChecks(previous => ({ ...previous, [id]: result }))
     record(
