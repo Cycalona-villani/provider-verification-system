@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:ci": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "cy:run": "cypress run --browser chrome --config baseUrl=http://127.0.0.1:4173",
+    "test:e2e": "start-server-and-test preview:ci http://127.0.0.1:4173/provider-verification-system/ cy:run"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -24,6 +27,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",
     "globals": "^17.12.0",
+    "start-server-and-test": "^3.0.13",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.69.0",
     "vite": "^8.3.0"

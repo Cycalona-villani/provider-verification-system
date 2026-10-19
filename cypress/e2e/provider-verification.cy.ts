@@ -2,7 +2,7 @@
 
 describe('Provider verification', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:5174/provider-verification-system/')
+    cy.visit('/provider-verification-system/')
   })
 
   it('blocks approval until checks pass, then allows approval', () => {
