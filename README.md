@@ -73,3 +73,47 @@ Production use would require backend enforcement of approval rules, authenticate
 - TypeScript
 - Vite
 - CSS
+
+## Automated Testing and Jenkins CI
+
+The project includes three Cypress end-to-end tests:
+
+- Approval stays blocked until verification checks pass.
+- An expired license blocks approval even after identity confirmation.
+- A verification service outage blocks approval and allows a successful retry.
+
+### Jenkins pipeline
+
+The pipeline is defined in the version-controlled Jenkinsfile. Each run:
+
+1. Checks Node and npm versions.
+2. Installs dependencies using npm ci.
+3. Runs ESLint.
+4. Builds the application with TypeScript and Vite.
+5. Starts a local preview server and runs Cypress in Chrome.
+6. Publishes JUnit test results and archives failure screenshots.
+7. Archives the application build when all checks pass.
+
+Verified result: **3 tests passed, 0 failed, 0 skipped.**
+
+![Jenkins test results](docs/images/jenkins-test-results.png)
+
+### Run locally
+
+Requires Node.js compatible with the project and Google Chrome.
+
+npm ci
+npm run lint
+npm run build
+npm run test:e2e
+
+The test command starts the preview server, waits for it to respond,
+runs Cypress, and stops the server afterward.
+
+### Deployment
+
+The demo is deployed to GitHub Pages through GitHub Actions.
+Jenkins currently runs separately on my Mac and is triggered manually.
+Deployment is not yet gated by the Jenkins result.
+
+[Try the live demo](https://megalodonfish.github.io/provider-verification-system/)
