@@ -45,6 +45,7 @@ pipeline {
       }
       post {
         always {
+            junit testResults: 'cypress/results/*.xml'
           archiveArtifacts(
             artifacts: 'cypress/screenshots/**/*',
             allowEmptyArchive: true

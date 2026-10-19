@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "preview:ci": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
-    "cy:run": "cypress run --browser chrome --config baseUrl=http://127.0.0.1:4173",
+    "cy:run": "cypress run --browser chrome --config baseUrl=http://127.0.0.1:4173 --reporter junit --reporter-options mochaFile=cypress/results/results-[hash].xml",
     "test:e2e": "start-server-and-test preview:ci http://127.0.0.1:4173/provider-verification-system/ cy:run"
   },
   "dependencies": {
