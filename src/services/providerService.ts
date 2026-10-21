@@ -9,11 +9,20 @@ export type Provider = {
 };
 
 export async function getProviders(): Promise<Provider[]> {
-    const response = await fetch('http://localhost:3001/api/providers');
+  const apiUrl = import.meta.env.VITE_API_URL ||
+    (import.meta.env.DEV ? 'http://localhost:3001' : '')
 
-    if (!response.ok) {
-        throw new Error('Unable to retrieve providers');
-    }
+  if (!apiUrl) {
+    throw new Error('Provider API is not configured')
+  }
 
-    return response.json();
+  const response = await fetch(
+    `${apiUrl.replace(/\/$/, '')}/api/providers`,
+  )
+
+  if (!response.ok) {
+    throw new Error('Unable to retrieve providers')
+  }
+
+  return response.json()
 }
