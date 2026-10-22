@@ -4,6 +4,8 @@ A React and TypeScript demo of a provider verification workflow for a Trust & Sa
 
 The application demonstrates verification checks, manual identity review, approval controls, and decision history using fictional providers and simulated results.
 
+The frontend also retrieves fictional provider records from an Express API hosted on Render, with loading and error states. These records are separate from the simulated verification applications.
+
 ## Features
 
 - Simulated identity and license checks.
@@ -63,7 +65,7 @@ Build the project:
 
 All provider information and verification results are fictional.
 
-Application state and decision history are held in memory and reset when the page is refreshed. The demo does not connect to identity verification services or licensing authorities.
+Simulated verification state and decision history are held in frontend memory and reset when the page is refreshed. The Express API serves fictional records from memory and does not yet use a database.
 
 Production use would require backend enforcement of approval rules, authenticated reviewers, access controls, durable audit records, and integrations with authoritative verification sources.
 
@@ -73,14 +75,21 @@ Production use would require backend enforcement of approval rules, authenticate
 - TypeScript
 - Vite
 - CSS
+- Node.js
+- Express
+- Cypress
+- Render
+- GitHub Actions
 
 ## Automated Testing and Jenkins CI
 
-The project includes three Cypress end-to-end tests:
+The project includes eight Cypress tests:
 
-- Approval stays blocked until verification checks pass.
-- An expired license blocks approval even after identity confirmation.
-- A verification service outage blocks approval and allows a successful retry.
+- Three verification workflow tests covering approval safeguards, expired licenses, and outage recovery.
+- Two frontend API tests using simulated responses to check provider display and network errors.
+- Three direct API tests checking service health, provider response fields and statuses, and 404 handling.
+
+Verified locally: **8 tests passed, 0 failed.**
 
 ### Jenkins pipeline
 
@@ -94,7 +103,7 @@ The pipeline is defined in the version-controlled Jenkinsfile. Each run:
 6. Publishes JUnit test results and archives failure screenshots.
 7. Archives the application build when all checks pass.
 
-Verified result: **3 tests passed, 0 failed, 0 skipped.**
+Earlier Jenkins result: **3 tests passed, 0 failed, 0 skipped.** The expanded eight-test suite was verified locally.
 
 ![Jenkins test results](docs/images/jenkins-test-results.png)
 
@@ -107,13 +116,20 @@ npm run lint
 npm run build
 npm run test:e2e
 
+Direct API tests also require the backend to be running at the apiUrl configured in cypress/e2e/api-endpoints.cy.js.
+
 The test command starts the preview server, waits for it to respond,
 runs Cypress, and stops the server afterward.
 
 ### Deployment
 
-The demo is deployed to GitHub Pages through GitHub Actions.
-Jenkins currently runs separately on my Mac and is triggered manually.
-Deployment is not yet gated by the Jenkins result.
+The React frontend is deployed from main to GitHub Pages through GitHub Actions. The Express backend is deployed from main to Render.
 
-[Try the live demo](https://megalodonfish.github.io/provider-verification-system/)
+The frontend build uses VITE_API_URL to connect to the hosted API.
+
+Jenkins runs separately on my Mac and is triggered manually. The GitHub Pages workflow builds and deploys the frontend but does not run Cypress or wait for Jenkins results.
+
+[Try the live demo](https://cycalona-villani.github.io/provider-verification-system/)
+
+[API health check](https://provider-onboarding-api.onrender.com/api/health)
+
