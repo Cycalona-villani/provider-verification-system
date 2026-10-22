@@ -121,7 +121,16 @@ Direct API tests also require the backend to be running at the apiUrl configured
 The test command starts the preview server, waits for it to respond,
 runs Cypress, and stops the server afterward.
 
-### Deployment
+## Contributing
+
+Contributions and suggestions are welcome.
+
+- Read [Contributing](CONTRIBUTING.md) for setup, testing, and pull request guidance.
+- Follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+- Use the issue templates to report bugs or suggest features.
+- Follow the [Security Policy](SECURITY.md) to report vulnerabilities.
+
+## Deployment
 
 The React frontend is deployed from main to GitHub Pages through GitHub Actions. The Express backend is deployed from main to Render.
 
