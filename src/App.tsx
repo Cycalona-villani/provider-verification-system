@@ -1,4 +1,9 @@
-import { useState } from 'react'
+
+import { useEffect, useState } from 'react'
+import {
+  getProviders,
+  type Provider as ApiProvider,
+} from './services/providerService'
 import './App.css'
 
 type Checks = {
@@ -44,6 +49,39 @@ const providers = [
 ]
 
 function App() {
+  const [apiProviders, setApiProviders] = useState<ApiProvider[]>([])
+const [apiLoading, setApiLoading] = useState(true)
+const [apiError, setApiError] = useState('')
+
+useEffect(() => {
+  let cancelled = false
+
+  async function loadProviders() {
+    try {
+      const data = await getProviders()
+
+      if (!cancelled) {
+        setApiProviders(data)
+      }
+    } catch {
+      if (!cancelled) {
+        setApiError(
+          'Unable to load providers. Check that the backend is running on port 3001.',
+        )
+      }
+    } finally {
+      if (!cancelled) {
+        setApiLoading(false)
+      }
+    }
+  }
+
+  loadProviders()
+
+  return () => {
+    cancelled = true
+  }
+}, [])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [checks, setChecks] = useState<Record<number, Checks>>({})
   const [reviews, setReviews] = useState<Record<number, Review>>({})
@@ -197,6 +235,42 @@ function App() {
   />
   {' '}Simulate verification service outage
     </label>
+    <section aria-labelledby="api-heading">
+  <h2 id="api-heading">Provider Onboarding API</h2>
+  <p>Fictional provider records loaded from the backend.</p>
+
+  {apiLoading && <p role="status">Loading providers…</p>}
+
+  {apiError && <p role="alert">{apiError}</p>}
+
+  {!apiLoading && !apiError && (
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Provider</th>
+          <th scope="col">Specialty</th>
+          <th scope="col">State</th>
+          <th scope="col">License</th>
+          <th scope="col">Onboarding</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {apiProviders.map(provider => (
+          <tr key={provider.id}>
+            <td>{provider.name}</td>
+            <td>{provider.specialty}</td>
+            <td>{provider.state}</td>
+            <td>{provider.licenseStatus}</td>
+            <td>
+              {provider.onboardingStatus.replaceAll('_', ' ')}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</section>
       <h2>Applications</h2>
       <table>
         <thead>
